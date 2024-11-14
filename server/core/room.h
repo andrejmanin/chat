@@ -5,11 +5,9 @@
 #include <array>
 #include <deque>
 #include <unordered_set>
+#include "../../protocol.h"
 
 using boost::asio::ip::tcp;
-
-constexpr int MAX_IP_PACK_SIZE = 1000;
-constexpr short MAX_NICKNAME = 16;
 
 namespace Time{
     std::string getTimestamp();

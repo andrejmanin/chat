@@ -52,20 +52,20 @@ void ChatRoom::leave(const std::shared_ptr<IParticipant>& participant) {
 void ChatRoom::broadcast(std::array<char, MAX_IP_PACK_SIZE> &msg, const std::shared_ptr<IParticipant> &participant) {
     std::string timestamp = getTimestamp();
     std::string nickname = getNickname(participant);
-    std::array<char, MAX_IP_PACK_SIZE> formated_msg{};
+    std::array<char, MAX_IP_PACK_SIZE> formatted_msg{};
 
-    strcpy(formated_msg.data(), timestamp.c_str());
-    strcat(formated_msg.data(), nickname.c_str());
-    strcat(formated_msg.data(), msg.data());
+    strcpy(formatted_msg.data(), timestamp.c_str());
+    strcat(formatted_msg.data(), nickname.c_str());
+    strcat(formatted_msg.data(), msg.data());
 
-    recent_msgs_.push_back(formated_msg);
-    while(recent_msgs_.size() > MAX_RECENT_MESSAGES) {
+    recent_msgs_.push_back(formatted_msg);
+    while (recent_msgs_.size() > MAX_RECENT_MESSAGES) {
         recent_msgs_.pop_front();
     }
 
     std::for_each(participants_.begin(), participants_.end(),
-                  [&formated_msg](const std::shared_ptr<IParticipant>& p) {
-                      p->onMassage(formated_msg);
+                  [&formatted_msg](const std::shared_ptr<IParticipant>& p) {
+                      p->onMassage(formatted_msg);
                   });
 }
 
@@ -74,18 +74,22 @@ std::string ChatRoom::getNickname(const std::shared_ptr<IParticipant>& participa
 }
 
 void PersonInRoom::nicknameHandler(const boost::system::error_code &error) {
-    if(strlen(nickname_.data()) <= MAX_NICKNAME - 2) {
-        strcat(nickname_.data(), ": ");
+    if (!error) {
+        if (strlen(nickname_.data()) <= MAX_NICKNAME - 2) {
+            strcat(nickname_.data(), ": ");
+        } else {
+            nickname_[MAX_NICKNAME - 2] = ':';
+            nickname_[MAX_NICKNAME - 1] = ' ';
+        }
+        chat_room_.enter(shared_from_this(), std::string(nickname_.data()));
+        boost::asio::async_read(socket_,
+            boost::asio::buffer(read_msg_, read_msg_.size()),
+            strand_.wrap([shared_this = shared_from_this()](const boost::system::error_code &error, const size_t &bytes_transferred) {
+                shared_this->readHandler(error);
+            }));
     } else {
-        nickname_[MAX_NICKNAME - 2] = ':';
-        nickname_[MAX_NICKNAME - 1] = ' ';
+        chat_room_.leave(shared_from_this());
     }
-    chat_room_.enter(shared_from_this(), std::string(nickname_.data()));
-    boost::asio::async_read(socket_,
-        boost::asio::buffer(read_msg_, read_msg_.size()),
-        strand_.wrap([shared_this = shared_from_this()](const boost::system::error_code &error, const size_t &bytes_transferred) {
-            shared_this->readHandler(error);
-        }));
 }
 
 void PersonInRoom::readHandler(const boost::system::error_code &error) {
