@@ -34,7 +34,7 @@ sudo dnf install boost-devel
 ```
 
 **CentOS:**  
-If you are using CentOS 8 or later, you might need to enable the PowerTools repository to get the Boost development libraries:  
+Якщо ви використовуєте CentOS 8 або новішої версії, вам може знадобитися ввімкнути репозиторій PowerTools, щоб отримати бібліотеки розробки Boost:
 
 ```console
 sudo yum config-manager --set-enabled powertools
@@ -52,7 +52,7 @@ sudo yum update
 sudo pacman -S boost
 ```
 
-When the installation will be complete, the Boost libraries will be installed on your system, typically in /usr. To verify that the Boost libraries have been installed correctly, you can check the version number:  
+Коли встановлення буде завершено, бібліотеки Boost будуть встановлені у вашій системі, як правило, в /usr. Щоб переконатися, що бібліотеки Boost встановлено правильно, ви можете перевірити номер версії:
 
 `cat /usr/include/boost/version.hpp | grep "BOOST_LIB_VERSION"`  
 
@@ -77,12 +77,12 @@ cmake .. -D BOOST_ROOT=path/to/boost_1_85_0
 cmake --build .  
 ```
 
-1.	Create a build directory which should store the results 
-2.	Change the current working directory to build 
-3.	Run the CMake configure step, providing it with the Boost directory 
-4.	Build the project
+1.	Створіть каталог збірки, у якому повинні зберігатися результати 
+2.	Змініть поточний робочий каталог для будування проєкту 
+3.	Налаштуйте CMake, надавши йому посилання на каталог Boost 
+4.	Збудуйте проект
 
-**If using CMake >=3.13, this can be simplified to:**  
+**Якщо ви використовуєте CMake >=3.13, це можна спростити до:**  
 ```console
 cmake -S . -B build -D BOOST_ROOT=path/to/boost_1_85_0   
 cmake --build build  
@@ -115,14 +115,14 @@ target_link_libraries(server ${Boost_LIBRARIES})
 target_link_libraries(client ${Boost_LIBRARIES})
 ```
 
-## **Build project:**  
+## **Будування проєкту:**  
 ```console
 cd build/
 make client
 make server
 ```
 
-## **Start program:**
+## **Запуск програми:**
 ```console
 ./server
 ```
