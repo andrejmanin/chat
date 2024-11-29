@@ -22,8 +22,8 @@ int main() {
             }
         });
 
-        input_thread.join();
         t.join();
+        input_thread.join();
 
 
     } catch (std::exception& exception) {

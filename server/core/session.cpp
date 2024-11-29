@@ -54,10 +54,11 @@ void ChatSession::sentMsg(const std::string& recipient, const std::string &text)
         std::cout << "Sent message to " << recipient << std::endl;
         std::string msg = "@" + username_ + ": " + text;
         boost::asio::async_write(it->second->socket_, boost::asio::buffer(msg),
-            [this](boost::system::error_code ec, size_t lenght) {
+            [this, msg](boost::system::error_code ec, size_t lenght) {
                 if(ec) {
                     std::cerr << "Error sending message: " << ec.message() << std::endl;
                 }
+                std::cout << "Sent next message: " << msg << std::endl;
             });
     }
 }

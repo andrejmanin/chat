@@ -35,8 +35,8 @@ void Client::sendName() {
 
 void Client::readMsg() {
     std::cout << read_msgs_.data() << std::endl;
-    boost::asio::async_read(socket_, boost::asio::buffer(read_msgs_),
-        [this](boost::system::error_code ec, size_t length) {
+    socket_.async_read_some(boost::asio::buffer(read_msgs_),
+            [this](boost::system::error_code ec, size_t length) {
             if (!ec) {
                 readMsg();
             } else {
