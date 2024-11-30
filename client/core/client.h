@@ -1,42 +1,27 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
+#include <queue>
 #include <boost/asio.hpp>
-#include <boost/bind.hpp>
-#include <array>
-#include <deque>
-#include <thread>
-#include "../../protocol.h"
-#include <iostream>
+#include "../../parameters.h"
 
 using boost::asio::ip::tcp;
 
 class Client {
-private:
-    boost::asio::io_context& io_context_;
+    const std::string IP_ADDR = "127.0.0.1";
+
     tcp::socket socket_;
-    std::array<char, MAX_NICKNAME> nickname_{};
+    boost::asio::io_context& io_context_;
     std::array<char, MAX_IP_PACK_SIZE> read_msgs_{};
-    std::deque<std::array<char, MAX_IP_PACK_SIZE>> write_msgs_;
+    std::deque<std::array<char, MAX_IP_PACK_SIZE>> write_msg_;
 
-    void closeImpl();
-
-    void onConnect(const boost::system::error_code& error);
-
-    void readHandler(const boost::system::error_code& error, std::size_t bytes_transferred);
-
-    void writeImpl(const std::array<char, MAX_IP_PACK_SIZE> &msg);
-
-    void writeHandler(const boost::system::error_code& error);
+    void sendName();
+    void readMsg();
+    void writeMsg(std::array<char, MAX_IP_PACK_SIZE> msg);
+    void writeHandler();
 public:
-    Client(std::array<char, MAX_NICKNAME> nickname, boost::asio::io_context& io_context, const tcp::resolver::iterator& endpoint_iterator);
-
+    Client(boost::asio::io_context& io_context, tcp::resolver& resolver);
     void write(const std::array<char, MAX_IP_PACK_SIZE>& msg);
-
-    void close();
-
 };
 
-
-
-#endif //CLIENT_H
+#endif // CLIENT_H

@@ -1,19 +1,22 @@
 #include "server.h"
 
-#include <boost/bind/bind.hpp>
+#include <iostream>
 
-void Server::run() {
-    std::shared_ptr<PersonInRoom> new_participant(new PersonInRoom(io_context_, strand_, room_));
-    acceptor_.async_accept(new_participant->socket(),
-        strand_.wrap(strand_.wrap([this, new_participant](const boost::system::error_code &error) {
-            onAccept(new_participant, error);
-        })));
+Server::Server(boost::asio::io_context &io_context,
+               const tcp::endpoint &endpoint)
+        : acceptor_(io_context, endpoint) {}
+
+void Server::start() {
+    std::cout << "Server started" << std::endl;
+    accept();
 }
 
-void Server::onAccept(std::shared_ptr<PersonInRoom> new_participant, const boost::system::error_code &error) {
-    if (!error) {
-        new_participant->start();
-    }
-    run();
+void Server::accept() {
+    acceptor_.async_accept([this](boost::system::error_code ec, tcp::socket socket) {
+        if(!ec) {
+            std::cout << "Accepted connection" << std::endl;
+            std::make_shared<ChatSession>(std::move(socket), clients_, clients_mutex_)->start();
+        }
+        accept();
+    });
 }
-
