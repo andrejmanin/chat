@@ -1,6 +1,7 @@
 #include "session.h"
 
 #include <iostream>
+#include "../logger.h"
 
 ChatSession::ChatSession(tcp::socket socket, std::unordered_map<std::string,
                              std::shared_ptr<ChatSession>> &clients, std::mutex &clients_mutex)
@@ -8,6 +9,7 @@ ChatSession::ChatSession(tcp::socket socket, std::unordered_map<std::string,
 
 void ChatSession::start() {
     std::cout << "Start session" << std::endl;
+    Logger::info("Start session");
     readUsrName();
 }
 
@@ -21,7 +23,7 @@ void ChatSession::readUsrName() {
                     std::lock_guard<std::mutex> lock(clients_mutex_);
                    clients_.emplace(username_, shared_from_this());
                 }
-                std::cout << "Got username: " << username_ << std::endl;
+                Logger::info("Got username: " + username_);
                 readMsg();
             }
         });
@@ -33,7 +35,7 @@ void ChatSession::readMsg() {
     socket_.async_read_some(boost::asio::buffer(write_msgs_),
         [this, self](boost::system::error_code ec, size_t lenght) {
             if(!ec) {
-                std::cout << "Get message from: " << username_ << " message: " << std::string(write_msgs_.data(), lenght) << std::endl;
+                Logger::info("Get message from " + username_ + std::string(write_msgs_.data(), lenght));
                 // std::lock_guard<std::mutex> lock(clients_mutex_);
                 std::string msg = std::string(write_msgs_.data(), lenght);
                 auto pos = msg.find(':');
@@ -51,14 +53,14 @@ void ChatSession::sentMsg(const std::string& recipient, const std::string &text)
     std::lock_guard<std::mutex> lock(clients_mutex_);
     auto it = clients_.find(recipient);
     if(it != clients_.end()) {
-        std::cout << "Sent message to " << recipient << std::endl;
+        Logger::info("Sent message to " + recipient);
         std::string msg = "@" + username_ + ": " + text;
         boost::asio::async_write(it->second->socket_, boost::asio::buffer(msg),
             [this, msg](boost::system::error_code ec, size_t lenght) {
                 if(ec) {
+                    Logger::error("Error sending message: " + ec.message());
                     std::cerr << "Error sending message: " << ec.message() << std::endl;
                 }
-                std::cout << "Sent next message: " << msg << std::endl;
             });
     }
 }
