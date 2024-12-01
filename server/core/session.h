@@ -16,6 +16,8 @@ class ChatSession : public std::enable_shared_from_this<ChatSession> {
     std::array<char, MAX_IP_PACK_SIZE> write_msgs_{};
     std::unordered_map<std::string, std::shared_ptr<ChatSession>>& clients_;
 
+    std::string* getClients() const;
+
     void readUsrName();
     void readMsg();
     void sentMsg(const std::string& recipient, const std::string &text) const;
