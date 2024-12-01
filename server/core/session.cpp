@@ -21,7 +21,7 @@ void ChatSession::readUsrName() {
                 username_ = std::string(write_msgs_.data(), lenght);
                 {
                     std::lock_guard<std::mutex> lock(clients_mutex_);
-                   clients_.emplace(username_, shared_from_this());
+                    clients_.emplace(username_, shared_from_this());
                 }
                 Logger::info("Got username: " + username_);
                 readMsg();
@@ -35,14 +35,24 @@ void ChatSession::readMsg() {
     socket_.async_read_some(boost::asio::buffer(write_msgs_),
         [this, self](boost::system::error_code ec, size_t lenght) {
             if(!ec) {
-                Logger::info("Get message from " + username_ + std::string(write_msgs_.data(), lenght));
-                // std::lock_guard<std::mutex> lock(clients_mutex_);
-                std::string msg = std::string(write_msgs_.data(), lenght);
-                auto pos = msg.find(':');
-                if(pos != std::string::npos) {
-                    std::string recipient = msg.substr(0, pos);
-                    std::string text = msg.substr(pos + 1);
-                    sentMsg(recipient, text);
+                Logger::info("Get message from " + username_ + ' ' + std::string(write_msgs_.data(), lenght));
+                if(std::string(write_msgs_.data(), 5) == "/list") {
+                    std::string clients = *getClients();
+                    boost::asio::async_write(socket_, boost::asio::buffer(clients),
+                        [this](boost::system::error_code ec, size_t lenght) {
+                            if(ec) {
+                                Logger::error("Error sending message: " + ec.message());
+                                std::cerr << "Error sending message: " << ec.message() << std::endl;
+                            }
+                        });
+                } else {
+                    std::string msg = std::string(write_msgs_.data(), lenght);
+                    auto pos = msg.find(':');
+                    if(pos != std::string::npos) {
+                        std::string recipient = msg.substr(0, pos);
+                        std::string text = msg.substr(pos + 1);
+                        sentMsg(recipient, text);
+                    }
                 }
                 readMsg();
             }
@@ -54,7 +64,7 @@ void ChatSession::sentMsg(const std::string& recipient, const std::string &text)
     auto it = clients_.find(recipient);
     if(it != clients_.end()) {
         Logger::info("Sent message to " + recipient);
-        std::string msg = "@" + username_ + ": " + text;
+        std::string msg = "@" + username_ + ":" + text;
         boost::asio::async_write(it->second->socket_, boost::asio::buffer(msg),
             [this, msg](boost::system::error_code ec, size_t lenght) {
                 if(ec) {
@@ -63,4 +73,12 @@ void ChatSession::sentMsg(const std::string& recipient, const std::string &text)
                 }
             });
     }
+}
+
+std::string* ChatSession::getClients() const {
+    auto* clients = new std::string();
+    for(auto& client : clients_) {
+        clients->append(client.first + "\n");
+    }
+    return clients;
 }

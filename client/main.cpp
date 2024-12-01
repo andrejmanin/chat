@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "core/client.h"
+#include "core/interface.h"
 
 int main() {
     try {
@@ -13,11 +14,23 @@ int main() {
 
         std::thread input_thread([&client]() {
             std::string input;
-            while (std::getline(std::cin, input)) {
+            while (Interface::Colors::send(), std::getline(std::cin, input)) {
                 if (!input.empty()) {
-                    std::array<char, MAX_IP_PACK_SIZE> msg{};
-                    std::copy(input.begin(), input.end(), msg.begin());
-                    client.write(msg);
+                    if(input == "/exit") {
+                        Interface::Info::close();
+                        client.close();
+                        break;
+                    }
+                    if(input == "/info") {
+                        Interface::Info::info();
+                    } else {
+                        if(input == "/list") {
+                            Interface::Info::getClients();
+                        }
+                        std::array<char, MAX_IP_PACK_SIZE> msg{};
+                        std::copy(input.begin(), input.end(), msg.begin());
+                        client.write(msg);
+                    }
                 }
             }
         });
@@ -27,6 +40,7 @@ int main() {
 
 
     } catch (std::exception& exception) {
+        Interface::Colors::error();
         std::cerr << "Exception: " << exception.what() << std::endl;
     }
 }
