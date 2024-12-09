@@ -5,11 +5,15 @@
 
 Server::Server(boost::asio::io_context &io_context,
                const tcp::endpoint &endpoint)
-        : acceptor_(io_context, endpoint) {}
+    : db_("users.db"), acceptor_(io_context, endpoint) {
+}
 
 void Server::start() {
     std::cout << "Server started" << std::endl;
     Logger::info("Server started");
+
+    db_.createTable("users", "id INTEGER PRIMARY KEY, username TEXT, password TEXT, email TEXT");
+
     accept();
 }
 
@@ -18,7 +22,7 @@ void Server::accept() {
         if(!ec) {
             Logger::info("Accepted connection");
             std::cout << "Accepted connection" << std::endl;
-            std::make_shared<ChatSession>(std::move(socket), clients_, clients_mutex_)->start();
+            std::make_shared<ChatSession>(std::move(socket), clients_, clients_mutex_, db_)->start();
         }
         accept();
     });

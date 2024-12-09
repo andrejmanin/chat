@@ -4,30 +4,156 @@
 #include "../logger.h"
 
 ChatSession::ChatSession(tcp::socket socket, std::unordered_map<std::string,
-                             std::shared_ptr<ChatSession>> &clients, std::mutex &clients_mutex)
-        : socket_(std::move(socket)), clients_mutex_(clients_mutex), clients_(clients) {}
+                             std::shared_ptr<ChatSession>> &clients, std::mutex &clients_mutex, UsersDatabase& db)
+        : db_(db), socket_(std::move(socket)), clients_mutex_(clients_mutex), clients_(clients) {}
 
 void ChatSession::start() {
     std::cout << "Start session" << std::endl;
     Logger::info("Start session");
-    readUsrName();
+    conn();
 }
 
-void ChatSession::readUsrName() {
+void ChatSession::conn() {
     auto self(shared_from_this());
     socket_.async_read_some(boost::asio::buffer(write_msgs_),
         [this, self](boost::system::error_code ec, size_t lenght) {
             if(!ec) {
-                username_ = std::string(write_msgs_.data(), lenght);
-                {
-                    std::lock_guard<std::mutex> lock(clients_mutex_);
-                    clients_.emplace(username_, shared_from_this());
+                std::string opr = std::string(write_msgs_.data(), std::strlen(write_msgs_.data()));
+                if (opr == "reg") {
+                    reg();
+                } else {
+                    log_in();
                 }
-                Logger::info("Got username: " + username_);
+            }
+        });
+}
+
+void ChatSession::reg() {
+    auto self(shared_from_this());
+    socket_.async_read_some(boost::asio::buffer(write_msgs_),
+        [this, self](boost::system::error_code ec, size_t length) {
+            if (!ec) {
+                std::string data(write_msgs_.data(), strlen(write_msgs_.data()));
+                auto pos1 = data.find(' ');
+                auto pos2 = data.find(' ', pos1 + 1);
+                username_ = data.substr(0, pos1);
+                std::string email = data.substr(pos1 + 1, pos2 - pos1 - 1);
+                std::string password = data.substr(pos2 + 1);
+
+                if (username_.empty() || email.empty() || password.empty()) {
+                    Logger::error("Invalid input: username, email, or password is empty");
+                    return;
+                }
+
+                if (!checkUserExistence(email)) {
+                    std::string query = "INSERT INTO users (username, password, email) VALUES (?, ?, ?)";
+                    sqlite3_stmt* stmt;
+                    if (sqlite3_prepare_v2(db_.getDB(), query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                        sqlite3_bind_text(stmt, 1, username_.c_str(), -1, SQLITE_TRANSIENT);
+                        sqlite3_bind_text(stmt, 2, email.c_str(), -1, SQLITE_TRANSIENT);
+                        sqlite3_bind_text(stmt, 3, password.c_str(), -1, SQLITE_TRANSIENT);
+                        if (sqlite3_step(stmt) == SQLITE_DONE) {
+                            socket_.async_write_some(boost::asio::buffer("Registration successful"),
+                            [this](boost::system::error_code ec, size_t) {
+                                if (ec) {
+                                    Logger::error("Error sending registration success message: " + ec.message());
+                                }
+                            });
+                            clients_.emplace(username_, shared_from_this());
+                            readMsg();
+                        } else {
+                        socket_.async_write_some(boost::asio::buffer("Registration failed"),
+                        [this](boost::system::error_code ec, size_t) {
+                            if (ec) {
+                                Logger::error("Error sending registration success message: " + ec.message());
+                            }
+                        });
+                    }
+                    sqlite3_finalize(stmt);
+                } else {
+                    socket_.async_write_some(boost::asio::buffer("This email is already registered"),
+                        [this](boost::system::error_code ec, size_t) {
+                            if (ec) {
+                                Logger::error("Error sending registration success message: " + ec.message());
+                            }
+                        });
+                }
+                } else {
+                    socket_.async_write_some(boost::asio::buffer("This email is already registered"),
+                        [this](boost::system::error_code ec, size_t) {
+                            if (ec) {
+                                Logger::error("Error sending email already registered message: " + ec.message());
+                            }
+                        });
+                }
+        }
+    });
+
+}
+
+bool ChatSession::checkUserExistence(const std::string& email) const {
+    bool isExist = false;
+    auto callback = [](void* data, int argc, char** argv, char** azColName) -> int {
+        if (argc > 0) {
+            *(static_cast<bool*>(data)) = true;
+        }
+        return 0;
+    };
+    db_.executeWithCallback("SELECT username FROM users WHERE email = '" + email + "'", callback, &isExist);
+    return isExist;
+}
+
+
+void ChatSession::log_in() {
+    auto self(shared_from_this());
+    socket_.async_read_some(boost::asio::buffer(write_msgs_),
+        [this, self](boost::system::error_code ec, size_t length) {
+            if (!ec) {
+                std::string data(write_msgs_.data(), length);
+                auto pos1 = data.find(' ');
+                std::string email = data.substr(0, pos1);
+                std::string password = data.substr(pos1 + 1);
+
+                if (email.empty() || password.empty()) {
+                    Logger::error("Invalid input: email or password is empty");
+                    throw std::runtime_error("Invalid input: email or password is empty");
+                }
+
+
+                std::string response_msg;
+
+                auto callback = [](void* data, int argc, char** argv, char** azColName) -> int {
+                    auto* result_data = static_cast<std::pair<std::string*, std::string*>*>(data);
+                    if (argc > 0) {
+                        *(result_data->first) = "Login successful! Welcome, " + std::string(argv[0] ? argv[0] : "NULL") + "\n";
+                        *(result_data->second) = argv[0] ? std::string(argv[0]) : "Unknown";
+                    } else {
+                        *(result_data->first) = "Invalid email or password\n";
+                    }
+                    return 0;
+                };
+                std::pair<std::string*, std::string*> result_data = {&response_msg, &username_};
+                db_.executeWithCallback(
+                    "SELECT username FROM users WHERE email = '" + email + "' AND password = '" + password + "'",
+                    callback,
+                    &result_data
+                );
+                if (clients_.size() != 0) {
+                    clients_.erase(clients_.find(*result_data.second));
+                }
+                clients_.emplace(*result_data.second, shared_from_this());
+                socket_.async_write_some(boost::asio::buffer(response_msg),
+                    [this, self](boost::system::error_code ec, size_t) {
+                        if (ec) {
+                            Logger::error("Error sending login response message: " + ec.message());
+                        }
+                    });
                 readMsg();
             }
         });
 }
+
+
 
 void ChatSession::readMsg() {
     auto self(shared_from_this());
@@ -37,7 +163,17 @@ void ChatSession::readMsg() {
             if(!ec) {
                 Logger::info("Get message from " + username_ + ' ' + std::string(write_msgs_.data(), lenght));
                 if(std::string(write_msgs_.data(), 5) == "/list") {
-                    std::string clients = *getClients();
+                    std::string clients;
+                    db_.executeWithCallback("SELECT username FROM users", [](void* data, int argc, char** argv, char** azColName) -> int {
+                        auto* clients = static_cast<std::string*>(data);
+                        if (argc > 0) {
+                            if (!clients->empty()) {
+                                *clients += ", ";
+                            }
+                            *clients += (argv[0] ? std::string(argv[0]) : "Unknown");
+                        }
+                        return 0;
+                    }, &clients);
                     boost::asio::async_write(socket_, boost::asio::buffer(clients),
                         [this](boost::system::error_code ec, size_t lenght) {
                             if(ec) {

@@ -16,7 +16,8 @@ class Client {
     std::array<char, MAX_IP_PACK_SIZE> read_msgs_{};
     std::deque<std::array<char, MAX_IP_PACK_SIZE>> write_msg_;
 
-    void sendName();
+    void registerUser();
+    void loginUser();
     void readMsg();
     void writeMsg(std::array<char, MAX_IP_PACK_SIZE> msg);
     void writeHandler();

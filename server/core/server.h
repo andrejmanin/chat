@@ -6,8 +6,11 @@
 #include <mutex>
 #include <unordered_map>
 #include "session.h"
+#include "database.h"
+
 
 class Server {
+    UsersDatabase db_;
     tcp::acceptor acceptor_;
     std::mutex clients_mutex_;
     std::unordered_map<std::string, std::shared_ptr<ChatSession>> clients_;
