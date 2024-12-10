@@ -20,9 +20,7 @@ class ChatSession : public std::enable_shared_from_this<ChatSession> {
     std::array<char, MAX_IP_PACK_SIZE> write_msgs_{};
     std::unordered_map<std::string, std::shared_ptr<ChatSession>>& clients_;
 
-    void conn();
     void reg();
-    void log_in();
     void readMsg();
     bool checkUserExistence(const std::string& email) const;
     std::string* getClients() const;

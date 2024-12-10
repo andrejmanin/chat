@@ -9,19 +9,8 @@ Client::Client(boost::asio::io_context &io_context, tcp::resolver& resolver)
     boost::asio::async_connect(socket_, resolver.resolve(IP_ADDR, std::to_string(PORT)),
         [this](boost::system::error_code ec, const tcp::endpoint&) {
             if(!ec) {
-                std::string option;
                 Interface::Info::start();
-                std::getline(std::cin, option);
-                if (option == "1") {
-                    socket_.send(boost::asio::buffer("reg"));
-                    registerUser();
-                } else if (option == "2") {
-                    socket_.send(boost::asio::buffer("log"));
-                    loginUser();
-                } else {
-                    Interface::Colors::error();
-                    std::cerr << "Invalid option" << std::endl;
-                }
+                registerUser();
             } else {
                 Interface::Colors::error();
                 std::cerr << "Connection failed: " << ec.message() << std::endl;
@@ -31,7 +20,6 @@ Client::Client(boost::asio::io_context &io_context, tcp::resolver& resolver)
 
 void Client::registerUser() {
     std::string username, email, password;
-    // Interface::Info::registerUser();
     std::cout << "Enter your username: ";
     std::getline(std::cin, username);
     std::cout << "Enter your email: ";
@@ -43,32 +31,10 @@ void Client::registerUser() {
     socket_.async_send(boost::asio::buffer(data),
         [this](boost::system::error_code ec, size_t) {
             if (!ec) {
-                Interface::Info::registrationSuccess();
                 readMsg();
             } else {
                 Interface::Colors::error();
                 std::cerr << "Error sending registration data: " << ec.message() << std::endl;
-            }
-        });
-}
-
-void Client::loginUser() {
-    std::string email, password;
-    /*Interface::Info::loginUser();*/
-    std::cout << "Enter your email: ";
-    std::getline(std::cin, email);
-    std::cout << "Enter your password: ";
-    std::getline(std::cin, password);
-
-    std::string data = email + " " + password;
-    socket_.async_send(boost::asio::buffer(data),
-        [this](boost::system::error_code ec, size_t) {
-            if (!ec) {
-                Interface::Info::loginSuccess();
-                readMsg();
-            } else {
-                Interface::Colors::error();
-                std::cerr << "Error sending login data: " << ec.message() << std::endl;
             }
         });
 }

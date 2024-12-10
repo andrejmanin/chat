@@ -15,10 +15,6 @@ namespace Interface {
     class Info {
     public:
         static void start();
-        static void registerUser();
-        static void loginUser();
-        static void registrationSuccess();
-        static void loginSuccess();
         static void close();
         static void getClients();
         static void sentUsername();

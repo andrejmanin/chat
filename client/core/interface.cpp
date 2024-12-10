@@ -7,45 +7,7 @@ using namespace Interface;
 void Info::start() {
     Colors::info();
     std::cout << "Welcome to Ugram" << std::endl;
-    std::cout << "1. Register" << std::endl;
-    std::cout << "2. Login" << std::endl;
-    std::cout << "Please, choose an option: ";
-    Colors::resetColor();
-}
-
-void Info::registerUser() {
-    Colors::info();
-    std::cout << "Enter your username: ";
-    std::cin.ignore();
-    Colors::resetColor();
-    Colors::send();
-    std::cout << "Enter your email: ";
-    std::cin.ignore();
-    Colors::resetColor();
-    Colors::send();
-    std::cout << "Enter your password: ";
-    std::cin.ignore();
-    Colors::resetColor();
-}
-
-void Info::loginUser() {
-    Colors::info();
-    std::cout << "Enter your email: ";
-    Colors::resetColor();
-    Colors::send();
-    std::cout << "Enter your password: ";
-    Colors::resetColor();
-}
-
-void Info::registrationSuccess() {
-    Colors::info();
-    std::cout << "Registration successful" << std::endl;
-    Colors::resetColor();
-}
-
-void Info::loginSuccess() {
-    Colors::info();
-    std::cout << "Login successful" << std::endl;
+    std::cout << "----------------------- Registration -----------------------" << std::endl;
     Colors::resetColor();
 }
 

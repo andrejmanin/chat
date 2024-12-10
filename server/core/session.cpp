@@ -10,22 +10,7 @@ ChatSession::ChatSession(tcp::socket socket, std::unordered_map<std::string,
 void ChatSession::start() {
     std::cout << "Start session" << std::endl;
     Logger::info("Start session");
-    conn();
-}
-
-void ChatSession::conn() {
-    auto self(shared_from_this());
-    socket_.async_read_some(boost::asio::buffer(write_msgs_),
-        [this, self](boost::system::error_code ec, size_t lenght) {
-            if(!ec) {
-                std::string opr = std::string(write_msgs_.data(), std::strlen(write_msgs_.data()));
-                if (opr == "reg") {
-                    reg();
-                } else {
-                    log_in();
-                }
-            }
-        });
+    reg();
 }
 
 void ChatSession::reg() {
@@ -102,58 +87,6 @@ bool ChatSession::checkUserExistence(const std::string& email) const {
     db_.executeWithCallback("SELECT username FROM users WHERE email = '" + email + "'", callback, &isExist);
     return isExist;
 }
-
-
-void ChatSession::log_in() {
-    auto self(shared_from_this());
-    socket_.async_read_some(boost::asio::buffer(write_msgs_),
-        [this, self](boost::system::error_code ec, size_t length) {
-            if (!ec) {
-                std::string data(write_msgs_.data(), length);
-                auto pos1 = data.find(' ');
-                std::string email = data.substr(0, pos1);
-                std::string password = data.substr(pos1 + 1);
-
-                if (email.empty() || password.empty()) {
-                    Logger::error("Invalid input: email or password is empty");
-                    throw std::runtime_error("Invalid input: email or password is empty");
-                }
-
-
-                std::string response_msg;
-
-                auto callback = [](void* data, int argc, char** argv, char** azColName) -> int {
-                    auto* result_data = static_cast<std::pair<std::string*, std::string*>*>(data);
-                    if (argc > 0) {
-                        *(result_data->first) = "Login successful! Welcome, " + std::string(argv[0] ? argv[0] : "NULL") + "\n";
-                        *(result_data->second) = argv[0] ? std::string(argv[0]) : "Unknown";
-                    } else {
-                        *(result_data->first) = "Invalid email or password\n";
-                    }
-                    return 0;
-                };
-                std::pair<std::string*, std::string*> result_data = {&response_msg, &username_};
-                db_.executeWithCallback(
-                    "SELECT username FROM users WHERE email = '" + email + "' AND password = '" + password + "'",
-                    callback,
-                    &result_data
-                );
-                if (clients_.size() != 0) {
-                    clients_.erase(clients_.find(*result_data.second));
-                }
-                clients_.emplace(*result_data.second, shared_from_this());
-                socket_.async_write_some(boost::asio::buffer(response_msg),
-                    [this, self](boost::system::error_code ec, size_t) {
-                        if (ec) {
-                            Logger::error("Error sending login response message: " + ec.message());
-                        }
-                    });
-                readMsg();
-            }
-        });
-}
-
-
 
 void ChatSession::readMsg() {
     auto self(shared_from_this());
